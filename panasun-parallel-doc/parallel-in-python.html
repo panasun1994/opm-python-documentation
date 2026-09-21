@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Run OPM Flow in parallel from Python &mdash; OPM Python Documentation  documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+      <link rel="stylesheet" href="_static/_rst_properties.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="_static/jquery.js?v=5d32c60e"></script>
+        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script src="_static/documentation_options.js?v=5929fcd5"></script>
+        <script src="_static/doctools.js?v=888ff710"></script>
+        <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Run Python embedded in OPM Flow" href="embedded-python.html" />
+    <link rel="prev" title="Run OPM Flow from Python" href="flow-in-python.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            OPM Python Documentation
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="flow-in-python.html">Run OPM Flow from Python</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Run OPM Flow in parallel from Python</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#what-mpirun-actually-does">What <code class="docutils literal notranslate"><span class="pre">mpirun</span></code> actually does</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#a-minimal-parallel-run">A minimal parallel run</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#constructing-the-simulator">Constructing the simulator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#initialising-mpi">Initialising MPI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#checking-return-values">Checking return values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#working-with-distributed-arrays">Working with distributed arrays</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#verifying-that-the-run-is-really-parallel">Verifying that the run is really parallel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#complete-example">Complete example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#known-limitations">Known limitations</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="embedded-python.html">Run Python embedded in OPM Flow</a></li>
+<li class="toctree-l1"><a class="reference internal" href="common.html">OPM Common Python Documentation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulators.html">OPM Simulators Python Documentation</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">OPM Python Documentation</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Run OPM Flow in parallel from Python</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/OPM/opm-python-documentation/blob/panasun-parallel-doc/python/docs/parallel-in-python.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="run-opm-flow-in-parallel-from-python">
+<h1>Run OPM Flow in parallel from Python<a class="headerlink" href="#run-opm-flow-in-parallel-from-python" title="Link to this heading"></a></h1>
+<p><a class="reference internal" href="flow-in-python.html"><span class="doc">Run OPM Flow from Python</span></a> shows how to drive a simulation from a single Python
+process. This page covers running the same simulation across several MPI ranks.</p>
+<section id="prerequisites">
+<h2>Prerequisites<a class="headerlink" href="#prerequisites" title="Link to this heading"></a></h2>
+<ul>
+<li><p>Flow compiled with Python support <strong>and</strong> MPI enabled, i.e. the cmake flags
+<code class="docutils literal notranslate"><span class="pre">-DOPM_ENABLE_PYTHON=ON</span></code>, <code class="docutils literal notranslate"><span class="pre">-DOPM_INSTALL_PYTHON=ON</span></code> and <code class="docutils literal notranslate"><span class="pre">-DUSE_MPI=ON</span></code>.
+See <a class="reference internal" href="flow-in-python.html"><span class="doc">Run OPM Flow from Python</span></a> for a sample build script.</p></li>
+<li><p>A graph partitioner available at configure time — Zoltan or ParMETIS —
+otherwise the grid cannot be distributed.</p></li>
+<li><p><a class="reference external" href="https://mpi4py.readthedocs.io/">mpi4py</a> installed in the same Python
+environment as the <code class="docutils literal notranslate"><span class="pre">opm</span></code> module.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code> pointing at both build trees, since <code class="docutils literal notranslate"><span class="pre">opm-common</span></code> provides
+<code class="docutils literal notranslate"><span class="pre">opm.io.*</span></code> and <code class="docutils literal notranslate"><span class="pre">opm-simulators</span></code> provides <code class="docutils literal notranslate"><span class="pre">opm.simulators.*</span></code>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">export</span><span class="w"> </span><span class="nv">PYTHONPATH</span><span class="o">=</span><span class="s2">&quot;&lt;opm-common-build&gt;/python:&lt;opm-simulators-build&gt;/python&quot;</span>
+</pre></div>
+</div>
+<p>The two merge into one <code class="docutils literal notranslate"><span class="pre">opm</span></code> package because neither defines an
+<code class="docutils literal notranslate"><span class="pre">__init__.py</span></code> at the <code class="docutils literal notranslate"><span class="pre">opm</span></code> level — they are PEP 420 namespace packages.</p>
+</li>
+</ul>
+</section>
+<section id="what-mpirun-actually-does">
+<h2>What <code class="docutils literal notranslate"><span class="pre">mpirun</span></code> actually does<a class="headerlink" href="#what-mpirun-actually-does" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mpirun<span class="w"> </span>-np<span class="w"> </span><span class="m">4</span><span class="w"> </span>python3<span class="w"> </span>my_script.py
+</pre></div>
+</div>
+<p>This starts <strong>four independent Python interpreters</strong>, not one parallel Python.
+Each executes the whole script and is assigned its own MPI rank. Any statement
+that is not guarded by a rank check runs four times, and every collective call
+must be reached by all ranks or the run blocks forever.</p>
+<p>The simulation is parallel because OPM distributes the grid internally: rank 0
+parses the deck, broadcasts it to the other ranks, the partitioner splits the
+grid, and each rank then owns a subset of the cells.</p>
+</section>
+<section id="a-minimal-parallel-run">
+<h2>A minimal parallel run<a class="headerlink" href="#a-minimal-parallel-run" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>          <span class="c1"># must be imported first: this calls MPI_Init</span>
+
+<span class="kn">from</span> <span class="nn">opm.simulators</span> <span class="kn">import</span> <span class="n">BlackOilSimulator</span>
+
+<span class="n">comm</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span>
+
+<span class="n">sim</span> <span class="o">=</span> <span class="n">BlackOilSimulator</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s2">&quot;SPE1CASE1.DATA&quot;</span><span class="p">)</span>
+
+<span class="c1"># mpi4py has already initialised MPI, so OPM must not do it again.</span>
+<span class="n">sim</span><span class="o">.</span><span class="n">setup_mpi</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">finalize</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="n">rc</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">step_init</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">rc</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;step_init() failed with code </span><span class="si">{</span><span class="n">rc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">sim</span><span class="o">.</span><span class="n">step</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>        <span class="c1"># 0 means the schedule hit an EXIT keyword</span>
+        <span class="k">break</span>
+
+<span class="n">sim</span><span class="o">.</span><span class="n">step_cleanup</span><span class="p">()</span>
+<span class="n">comm</span><span class="o">.</span><span class="n">barrier</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Run it with:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mpirun<span class="w"> </span>-np<span class="w"> </span><span class="m">4</span><span class="w"> </span>python3<span class="w"> </span>my_script.py
+</pre></div>
+</div>
+<p>and confirm the rank count in the print file:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>grep<span class="w"> </span><span class="s2">&quot;Number of MPI processes&quot;</span><span class="w"> </span>SPE1CASE1.PRT
+</pre></div>
+</div>
+</section>
+<section id="constructing-the-simulator">
+<h2>Constructing the simulator<a class="headerlink" href="#constructing-the-simulator" title="Link to this heading"></a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>In parallel, only the <strong>filename constructor</strong> works:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sim</span> <span class="o">=</span> <span class="n">BlackOilSimulator</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s2">&quot;SPE1CASE1.DATA&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The four-argument form documented for serial runs —
+<code class="docutils literal notranslate"><span class="pre">BlackOilSimulator(deck,</span> <span class="pre">state,</span> <span class="pre">schedule,</span> <span class="pre">summary_config)</span></code> — cannot run on
+more than one rank. An <code class="docutils literal notranslate"><span class="pre">EclipseState</span></code> built in Python is the <em>serial</em>
+class, while a parallel run requires <code class="docutils literal notranslate"><span class="pre">ParallelEclipseState</span></code>, which has no
+Python binding. OPM reports:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">Error</span><span class="p">:</span> <span class="n">Parallel</span> <span class="n">simulator</span> <span class="n">setup</span> <span class="ow">is</span> <span class="n">incorrect</span> <span class="k">as</span> <span class="n">it</span> <span class="n">does</span> <span class="ow">not</span> <span class="n">use</span> <span class="n">ParallelEclipseState</span>
+</pre></div>
+</div>
+<p>but this is <strong>not</strong> raised as a Python exception; see
+<a class="reference internal" href="#checking-return-values"><span class="std std-ref">Checking return values</span></a> below.</p>
+</div>
+<p>With the filename form, OPM owns the whole pipeline — parsing, broadcast,
+partitioning and distribution — so no serial state object ever crosses into the
+parallel code path.</p>
+</section>
+<section id="initialising-mpi">
+<h2>Initialising MPI<a class="headerlink" href="#initialising-mpi" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">setup_mpi()</span></code> takes two flags, and both matter when mpi4py is in use:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sim</span><span class="o">.</span><span class="n">setup_mpi</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">finalize</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">init=False</span></code></dt><dd><p><code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">mpi4py</span> <span class="pre">import</span> <span class="pre">MPI</span></code> already called <code class="docutils literal notranslate"><span class="pre">MPI_Init</span></code>. Letting OPM
+initialise MPI a second time is an error.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">finalize=False</span></code></dt><dd><p>Leaves MPI running after the simulator shuts down. With <code class="docutils literal notranslate"><span class="pre">finalize=True</span></code>
+OPM tears MPI down, and any collective call afterwards — including an
+<code class="docutils literal notranslate"><span class="pre">allgather</span></code> used for checking results — aborts.</p>
+</dd>
+</dl>
+</section>
+<section id="checking-return-values">
+<span id="id1"></span><h2>Checking return values<a class="headerlink" href="#checking-return-values" title="Link to this heading"></a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><code class="docutils literal notranslate"><span class="pre">step_init()</span></code> and <code class="docutils literal notranslate"><span class="pre">step()</span></code> use <strong>opposite</strong> success conventions, and
+neither raises on failure. Do not reuse one check for the other.</p>
+</div>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20%" />
+<col style="width: 20%" />
+<col style="width: 60%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Method</p></th>
+<th class="head"><p>Success</p></th>
+<th class="head"><p>Notes</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">step_init()</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
+<td><p>Non-zero means setup failed. Nothing is raised.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">step()</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">0</span></code> means the schedule hit an <code class="docutils literal notranslate"><span class="pre">EXIT</span></code> keyword — a normal early stop.</p></td>
+</tr>
+</tbody>
+</table>
+<p>A failed <code class="docutils literal notranslate"><span class="pre">step_init()</span></code> returns a non-zero code and leaves a null simulator
+behind. The failure only becomes visible at the <em>next</em> call, as a segmentation
+fault rather than a Python traceback. Calling <code class="docutils literal notranslate"><span class="pre">step_init()</span></code> a second time
+reports success, because the internal “already initialised” flag was set
+despite the failure.</p>
+<p>Always check the return value:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">rc</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">step_init</span><span class="p">()</span>
+<span class="k">if</span> <span class="n">rc</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;step_init() failed with code </span><span class="si">{</span><span class="n">rc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">get_dt()</span></code> must not be called before the first <code class="docutils literal notranslate"><span class="pre">step()</span></code>. It maps to
+<code class="docutils literal notranslate"><span class="pre">SimulatorTimer::stepLengthTaken()</span></code>, which is guarded by an assertion on
+the step counter. In a build without <code class="docutils literal notranslate"><span class="pre">-DNDEBUG</span></code> this aborts the
+interpreter with <code class="docutils literal notranslate"><span class="pre">SIGABRT</span></code>, which Python cannot catch.</p>
+</div>
+</section>
+<section id="working-with-distributed-arrays">
+<h2>Working with distributed arrays<a class="headerlink" href="#working-with-distributed-arrays" title="Link to this heading"></a></h2>
+<p>After the grid is distributed, each rank holds <strong>only its own cells</strong>, plus an
+overlap layer. Array getters return that local array, not the global field.</p>
+<p>For SPE1CASE1 (300 cells) the local lengths are:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20%" />
+<col style="width: 80%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Ranks</p></th>
+<th class="head"><p><code class="docutils literal notranslate"><span class="pre">len(sim.get_porosity())</span></code> per rank</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>1</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">[300]</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>2</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">[177,</span> <span class="pre">189]</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>4</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">[135,</span> <span class="pre">123,</span> <span class="pre">117,</span> <span class="pre">132]</span></code></p></td>
+</tr>
+</tbody>
+</table>
+<p>The local lengths sum to more than 300 because overlap cells are counted on
+more than one rank. Owned cells sum to exactly 300.</p>
+<p>Setters expect an array of <strong>this rank’s</strong> length. The safe pattern is to
+derive the new array from the old one, which stays correct at any rank count:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">poro</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">get_porosity</span><span class="p">()</span>
+<span class="n">sim</span><span class="o">.</span><span class="n">set_porosity</span><span class="p">(</span><span class="n">poro</span> <span class="o">*</span> <span class="mf">0.95</span><span class="p">)</span>      <span class="c1"># correct on 1, 2 or 4 ranks</span>
+</pre></div>
+</div>
+<p>A script that builds a 300-element array from <code class="docutils literal notranslate"><span class="pre">DIMENS</span></code> is wrong on every run
+with more than one rank.</p>
+</section>
+<section id="verifying-that-the-run-is-really-parallel">
+<h2>Verifying that the run is really parallel<a class="headerlink" href="#verifying-that-the-run-is-really-parallel" title="Link to this heading"></a></h2>
+<p>A run that does not crash is not evidence of anything — four <em>independent
+serial</em> runs do not crash either. Two checks distinguish the cases.</p>
+<p>First, the print file should report the rank count:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>grep<span class="w"> </span><span class="s2">&quot;Number of MPI processes&quot;</span><span class="w"> </span>SPE1CASE1.PRT
+</pre></div>
+</div>
+<p>Second, compare values across ranks. Quantities such as the step counter must
+agree, while local array lengths must differ:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">agree</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+    <span class="n">gathered</span> <span class="o">=</span> <span class="n">comm</span><span class="o">.</span><span class="n">allgather</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="n">same</span> <span class="o">=</span> <span class="nb">len</span><span class="p">({</span><span class="nb">repr</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">gathered</span><span class="p">})</span> <span class="o">==</span> <span class="mi">1</span>
+    <span class="k">if</span> <span class="n">comm</span><span class="o">.</span><span class="n">Get_rank</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="s1">&#39;same  &#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">same</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;DIFFER&#39;</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">label</span><span class="si">:</span><span class="s2">&lt;20</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">gathered</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">gathered</span>
+
+<span class="n">agree</span><span class="p">(</span><span class="s2">&quot;current_step&quot;</span><span class="p">,</span> <span class="n">sim</span><span class="o">.</span><span class="n">current_step</span><span class="p">())</span>        <span class="c1"># expect agreement</span>
+<span class="n">agree</span><span class="p">(</span><span class="s2">&quot;len(porosity)&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">sim</span><span class="o">.</span><span class="n">get_porosity</span><span class="p">()))</span>  <span class="c1"># expect differences</span>
+</pre></div>
+</div>
+<p>If the porosity lengths agree at four ranks, the grid was never distributed and
+you are running four serial simulations.</p>
+</section>
+<section id="complete-example">
+<h2>Complete example<a class="headerlink" href="#complete-example" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/usr/bin/env python3</span>
+<span class="sd">&quot;&quot;&quot;SPE1CASE1 driven from Python across several MPI ranks.</span>
+
+<span class="sd">    mpirun -np 4 python3 spe1case1_parallel.py</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>          <span class="c1"># must come first: this calls MPI_Init</span>
+
+<span class="kn">from</span> <span class="nn">opm.simulators</span> <span class="kn">import</span> <span class="n">BlackOilSimulator</span>
+
+<span class="n">COMM</span> <span class="o">=</span> <span class="n">MPI</span><span class="o">.</span><span class="n">COMM_WORLD</span>
+<span class="n">RANK</span> <span class="o">=</span> <span class="n">COMM</span><span class="o">.</span><span class="n">Get_rank</span><span class="p">()</span>
+<span class="n">SIZE</span> <span class="o">=</span> <span class="n">COMM</span><span class="o">.</span><span class="n">Get_size</span><span class="p">()</span>
+
+<span class="n">CASE</span> <span class="o">=</span> <span class="s2">&quot;SPE1CASE1.DATA&quot;</span>
+<span class="n">NSTEPS</span> <span class="o">=</span> <span class="mi">2</span>
+
+
+<span class="k">def</span> <span class="nf">root</span><span class="p">(</span><span class="n">msg</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Print once, from rank 0.&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">RANK</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">agree</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Report whether every rank produced the same value.&quot;&quot;&quot;</span>
+    <span class="n">gathered</span> <span class="o">=</span> <span class="n">COMM</span><span class="o">.</span><span class="n">allgather</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="n">same</span> <span class="o">=</span> <span class="nb">len</span><span class="p">({</span><span class="nb">repr</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">gathered</span><span class="p">})</span> <span class="o">==</span> <span class="mi">1</span>
+    <span class="n">root</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  </span><span class="si">{</span><span class="s1">&#39;same  &#39;</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="n">same</span><span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s1">&#39;DIFFER&#39;</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">label</span><span class="si">:</span><span class="s2">&lt;22</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="n">gathered</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">gathered</span>
+
+
+<span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="n">root</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;SPE1CASE1 on </span><span class="si">{</span><span class="n">SIZE</span><span class="si">}</span><span class="s2"> rank(s)&quot;</span><span class="p">)</span>
+
+    <span class="n">sim</span> <span class="o">=</span> <span class="n">BlackOilSimulator</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="n">CASE</span><span class="p">)</span>
+    <span class="n">sim</span><span class="o">.</span><span class="n">setup_mpi</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">finalize</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="n">rc</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">step_init</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">rc</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;step_init() failed with code </span><span class="si">{</span><span class="n">rc</span><span class="si">}</span><span class="s2"> on rank </span><span class="si">{</span><span class="n">RANK</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">agree</span><span class="p">(</span><span class="s2">&quot;current_step&quot;</span><span class="p">,</span> <span class="n">sim</span><span class="o">.</span><span class="n">current_step</span><span class="p">())</span>
+
+    <span class="n">poro</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">get_porosity</span><span class="p">()</span>
+    <span class="n">lengths</span> <span class="o">=</span> <span class="n">agree</span><span class="p">(</span><span class="s2">&quot;len(porosity)&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">poro</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">RANK</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  -&gt; </span><span class="si">{</span><span class="nb">sum</span><span class="p">(</span><span class="n">lengths</span><span class="p">)</span><span class="si">}</span><span class="s2"> local cells across </span><span class="si">{</span><span class="n">SIZE</span><span class="si">}</span><span class="s2"> ranks &quot;</span>
+              <span class="sa">f</span><span class="s2">&quot;(300 owned + overlap)&quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">sim</span><span class="o">.</span><span class="n">set_porosity</span><span class="p">(</span><span class="n">poro</span> <span class="o">*</span> <span class="mf">0.95</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">NSTEPS</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">sim</span><span class="o">.</span><span class="n">step</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">root</span><span class="p">(</span><span class="s2">&quot;  EXIT encountered in the schedule -- stopping early&quot;</span><span class="p">)</span>
+            <span class="k">break</span>
+        <span class="n">root</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;after step </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2">:&quot;</span><span class="p">)</span>
+        <span class="n">agree</span><span class="p">(</span><span class="s2">&quot;get_dt&quot;</span><span class="p">,</span> <span class="n">sim</span><span class="o">.</span><span class="n">get_dt</span><span class="p">())</span>
+        <span class="n">agree</span><span class="p">(</span><span class="s2">&quot;current_step&quot;</span><span class="p">,</span> <span class="n">sim</span><span class="o">.</span><span class="n">current_step</span><span class="p">())</span>
+
+    <span class="n">sim</span><span class="o">.</span><span class="n">step_cleanup</span><span class="p">()</span>
+
+    <span class="c1"># Every rank must reach this, or the others block here forever.</span>
+    <span class="n">COMM</span><span class="o">.</span><span class="n">barrier</span><span class="p">()</span>
+    <span class="n">root</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;done -- check &#39;Number of MPI processes: </span><span class="si">{</span><span class="n">SIZE</span><span class="si">}</span><span class="s2">&#39; in the PRT file&quot;</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="known-limitations">
+<h2>Known limitations<a class="headerlink" href="#known-limitations" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 40%" />
+<col style="width: 60%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Limitation</p></th>
+<th class="head"><p>Consequence</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>No Python binding for <code class="docutils literal notranslate"><span class="pre">ParallelEclipseState</span></code></p></td>
+<td><p>Decks cannot be built or modified in Python before a parallel run. Use
+the filename constructor and edit the deck on disk.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">step_init()</span></code> failures are not raised</p></td>
+<td><p>A setup error surfaces as a segmentation fault on the next call. Always
+check the return value.</p></td>
+</tr>
+<tr class="row-even"><td><p>Return conventions are inconsistent</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">step_init()</span></code> returns <code class="docutils literal notranslate"><span class="pre">0</span></code> on success, <code class="docutils literal notranslate"><span class="pre">step()</span></code> returns <code class="docutils literal notranslate"><span class="pre">1</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">get_dt()</span></code> asserts before the first step</p></td>
+<td><p>Aborts the interpreter in builds without <code class="docutils literal notranslate"><span class="pre">-DNDEBUG</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+<p>These apply to <code class="docutils literal notranslate"><span class="pre">GasWaterSimulator</span></code> and <code class="docutils literal notranslate"><span class="pre">OnePhaseSimulator</span></code> as well, since
+the behaviour comes from their shared base class.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="flow-in-python.html" class="btn btn-neutral float-left" title="Run OPM Flow from Python" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="embedded-python.html" class="btn btn-neutral float-right" title="Run Python embedded in OPM Flow" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024 Equinor ASA.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> Other versions</span>
+    v: panasun-parallel-doc
+    <span class="fa fa-caret-down"></span>
+  </span>
+  <div class="rst-other-versions">
+    <div class="injected">
+      <dl>
+        <dt>Branches</dt>
+        <dd class="rtd-current-item">
+          <a href="../panasun-parallel-doc/index.html">panasun-parallel-doc</a>
+        </dd>
+        <dd class="">
+          <a href="../master/index.html">master</a>
+        </dd>
+      </dl>
+      <dl>
+        <dt>Search</dt>
+        <dd>
+          <div style="padding: 6px;">
+            <form id="flyout-search-form" class="wy-form" target="_blank"
+              action="../panasun-parallel-doc/index.html/../search.html"
+              method="get">
+              <input type="text" name="q" aria-label="Search docs" placeholder="Search docs">
+            </form>
+          </div>
+        </dd>
+      </dl>
+    </div>
+  </div>
+</div>
+<script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
