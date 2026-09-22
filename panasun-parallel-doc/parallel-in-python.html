@@ -51,7 +51,6 @@
 <li class="toctree-l2"><a class="reference internal" href="#good-to-know">Good to know</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#initialising-mpi">Initialising MPI</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#constructing-the-simulator">Constructing the simulator</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#checking-return-values">Checking return values</a></li>
 </ul>
 </li>
 </ul>
@@ -189,48 +188,6 @@ OPM tears MPI down, and any collective call afterwards — including an
 <p>The four-argument form documented for serial runs —
 <code class="docutils literal notranslate"><span class="pre">BlackOilSimulator(deck,</span> <span class="pre">state,</span> <span class="pre">schedule,</span> <span class="pre">summary_config)</span></code> — cannot run on
 more than one rank.</p>
-</div>
-</section>
-<section id="checking-return-values">
-<span id="id1"></span><h3>Checking return values<a class="headerlink" href="#checking-return-values" title="Link to this heading"></a></h3>
-<div class="admonition warning">
-<p class="admonition-title">Warning</p>
-<p><code class="docutils literal notranslate"><span class="pre">step_init()</span></code> and <code class="docutils literal notranslate"><span class="pre">step()</span></code> use <strong>opposite</strong> success conventions, and
-neither raises on failure. Do not reuse one check for the other.</p>
-</div>
-<table class="docutils align-default">
-<colgroup>
-<col style="width: 20%" />
-<col style="width: 20%" />
-<col style="width: 60%" />
-</colgroup>
-<thead>
-<tr class="row-odd"><th class="head"><p>Method</p></th>
-<th class="head"><p>Success</p></th>
-<th class="head"><p>Notes</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">step_init()</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">0</span></code></p></td>
-<td><p>Non-zero means setup failed. Nothing is raised.</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">step()</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">1</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">0</span></code> means the schedule hit an <code class="docutils literal notranslate"><span class="pre">EXIT</span></code> keyword — a normal early stop.</p></td>
-</tr>
-</tbody>
-</table>
-<p>A failed <code class="docutils literal notranslate"><span class="pre">step_init()</span></code> returns a non-zero code and leaves a null simulator
-behind. The failure only becomes visible at the <em>next</em> call, as a segmentation
-fault rather than a Python traceback. Calling <code class="docutils literal notranslate"><span class="pre">step_init()</span></code> a second time
-reports success, because the internal “already initialised” flag was set
-despite the failure.</p>
-<p>Always check the return value:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">rc</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">step_init</span><span class="p">()</span>
-<span class="k">if</span> <span class="n">rc</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
-    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;step_init() failed with code </span><span class="si">{</span><span class="n">rc</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-</pre></div>
 </div>
 </section>
 </section>
