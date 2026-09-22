@@ -47,9 +47,9 @@
 <li class="toctree-l1"><a class="reference internal" href="flow-in-python.html">Run OPM Flow from Python</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Run OPM Flow in parallel from Python</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#a-script-for-parallel-run-example">A script for parallel run example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#an-example-script-for-a-parallel-run">An example script for a parallel run</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#good-to-know">Good to know</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#initialising-mpi">Initialising MPI</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#initializing-mpi">Initializing MPI</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#constructing-the-simulator">Constructing the simulator</a></li>
 </ul>
 </li>
@@ -93,21 +93,30 @@ process. This page covers running the same simulation across several MPI ranks.<
 <p>This page assumes you can already run a serial simulation from Python. See
 <a class="reference internal" href="flow-in-python.html"><span class="doc">Run OPM Flow from Python</span></a> for compiling Flow with Python support and for setting
 <code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code>.</p>
-<p>Running in parallel needs three things in addition:</p>
+<p>Running in parallel needs the following in addition:</p>
 <ul class="simple">
-<li><p><strong>MPI enabled in the build.</strong> Add <code class="docutils literal notranslate"><span class="pre">-DUSE_MPI=ON</span></code> to the cmake flags
-alongside <code class="docutils literal notranslate"><span class="pre">-DOPM_ENABLE_PYTHON=ON</span></code> and <code class="docutils literal notranslate"><span class="pre">-DOPM_INSTALL_PYTHON=ON</span></code>.</p></li>
-<li><p><strong>A graph partitioner</strong> present at configure time, either Zoltan or
-ParMETIS. Without one, the grid cannot be distributed across ranks.</p></li>
-<li><p><strong>mpi4py</strong> installed in the same Python environment as the <code class="docutils literal notranslate"><span class="pre">opm</span></code> module.
-See the <a class="reference external" href="https://mpi4py.readthedocs.io/">mpi4py documentation</a>.</p></li>
+<li><p><strong>MPI available at configure time.</strong> <code class="docutils literal notranslate"><span class="pre">USE_MPI</span></code> is <code class="docutils literal notranslate"><span class="pre">ON</span></code> by default, so in
+practice this just means having an MPI implementation installed where CMake
+can find it.</p></li>
+<li><p><strong>A graph partitioner</strong> — Zoltan or METIS/ParMETIS — present at configure
+time. The default partitioning method is <code class="docutils literal notranslate"><span class="pre">zoltanwell</span></code>, so without one of
+these libraries you will need <code class="docutils literal notranslate"><span class="pre">--partition-method=simple</span></code>, which uses
+OPM’s built-in rectangular partitioning of the Cartesian grid instead.</p></li>
+<li><p><strong>mpi4py</strong>, <em>if the script itself needs MPI</em> — to print from one rank only,
+or to combine the per-rank results of <code class="docutils literal notranslate"><span class="pre">get_porosity()</span></code> and friends. It is
+not needed simply to run in parallel: with the defaults
+<code class="docutils literal notranslate"><span class="pre">init=True,</span> <span class="pre">finalize=True</span></code> OPM initializes MPI itself, and
+<code class="docutils literal notranslate"><span class="pre">mpirun</span> <span class="pre">-np</span> <span class="pre">4</span> <span class="pre">python3</span> <span class="pre">my_script.py</span></code> works with no mpi4py at all. But once
+mpi4py is imported, the flag values described under “Initializing MPI” below
+become required rather than optional. See the
+<a class="reference external" href="https://mpi4py.readthedocs.io/">mpi4py documentation</a>.</p></li>
 </ul>
 </section>
-<section id="a-script-for-parallel-run-example">
-<h2>A script for parallel run example<a class="headerlink" href="#a-script-for-parallel-run-example" title="Link to this heading"></a></h2>
+<section id="an-example-script-for-a-parallel-run">
+<h2>An example script for a parallel run<a class="headerlink" href="#an-example-script-for-a-parallel-run" title="Link to this heading"></a></h2>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">opm.simulators</span> <span class="kn">import</span> <span class="n">BlackOilSimulator</span>
 
-<span class="c1"># mpi4py owns MPI_Init/MPI_Finalize; importing it initialises MPI for the</span>
+<span class="c1"># mpi4py owns MPI_Init/MPI_Finalize; importing it initializes MPI for the</span>
 <span class="c1"># whole process, including the simulator underneath.</span>
 <span class="kn">from</span> <span class="nn">mpi4py</span> <span class="kn">import</span> <span class="n">MPI</span>
 
@@ -120,14 +129,12 @@ See the <a class="reference external" href="https://mpi4py.readthedocs.io/">mpi4
 <span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
     <span class="n">sim</span> <span class="o">=</span> <span class="n">BlackOilSimulator</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="n">CASE</span><span class="p">)</span>
 
-    <span class="c1"># init=False: MPI is already initialised by mpi4py.</span>
+    <span class="c1"># init=False: MPI is already initialized by mpi4py.</span>
     <span class="c1"># finalize=False: keep MPI alive until the script exits.</span>
     <span class="n">sim</span><span class="o">.</span><span class="n">setup_mpi</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">finalize</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
-    <span class="c1"># sim_step_init() return 1 is fail. So we have to check abit</span>
-    <span class="n">rc</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">step_init</span><span class="p">()</span>
-    <span class="k">if</span> <span class="n">rc</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;step_init() failed with code </span><span class="si">{</span><span class="n">rc</span><span class="si">}</span><span class="s2"> on rank </span><span class="si">{</span><span class="n">RANK</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="c1"># step_init() returns 0 on success and 1 on failure.</span>
+    <span class="n">sim</span><span class="o">.</span><span class="n">step_init</span><span class="p">()</span>
 
     <span class="n">sim</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
 
@@ -159,21 +166,24 @@ See the <a class="reference external" href="https://mpi4py.readthedocs.io/">mpi4
 </section>
 <section id="good-to-know">
 <h2>Good to know<a class="headerlink" href="#good-to-know" title="Link to this heading"></a></h2>
-<p>The rest of this page covers behaviour that is easy to get wrong,
+<p>The rest of this page covers behavior that is easy to get wrong,
 and the reasons behind the recommendations above.</p>
-<section id="initialising-mpi">
-<h3>Initialising MPI<a class="headerlink" href="#initialising-mpi" title="Link to this heading"></a></h3>
+<section id="initializing-mpi">
+<h3>Initializing MPI<a class="headerlink" href="#initializing-mpi" title="Link to this heading"></a></h3>
 <p><code class="docutils literal notranslate"><span class="pre">setup_mpi()</span></code> takes two flags, and both matter when mpi4py is in use:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sim</span><span class="o">.</span><span class="n">setup_mpi</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">finalize</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </pre></div>
 </div>
 <dl class="simple">
 <dt><code class="docutils literal notranslate"><span class="pre">init=False</span></code></dt><dd><p><code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">mpi4py</span> <span class="pre">import</span> <span class="pre">MPI</span></code> already called <code class="docutils literal notranslate"><span class="pre">MPI_Init</span></code>. Letting OPM
-initialise MPI a second time is an error.</p>
+initialize MPI a second time is an error.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">finalize=False</span></code></dt><dd><p>Leaves MPI running after the simulator shuts down. With <code class="docutils literal notranslate"><span class="pre">finalize=True</span></code>
 OPM tears MPI down, and any collective call afterwards — including an
-<code class="docutils literal notranslate"><span class="pre">allgather</span></code> used for checking results — aborts.</p>
+<code class="docutils literal notranslate"><span class="pre">allgather</span></code> used for checking results — aborts. The teardown happens in
+the simulator’s destructor, not in <code class="docutils literal notranslate"><span class="pre">step_cleanup()</span></code>: in the example above
+it fires when <code class="docutils literal notranslate"><span class="pre">main()</span></code> returns and <code class="docutils literal notranslate"><span class="pre">sim</span></code> goes out of scope, so
+collectives still work immediately after <code class="docutils literal notranslate"><span class="pre">step_cleanup()</span></code>.</p>
 </dd>
 </dl>
 </section>
@@ -187,7 +197,8 @@ OPM tears MPI down, and any collective call afterwards — including an
 </div>
 <p>The four-argument form documented for serial runs —
 <code class="docutils literal notranslate"><span class="pre">BlackOilSimulator(deck,</span> <span class="pre">state,</span> <span class="pre">schedule,</span> <span class="pre">summary_config)</span></code> — cannot run on
-more than one rank.</p>
+more than one rank.  It aborts with
+<code class="docutils literal notranslate"><span class="pre">Parallel</span> <span class="pre">simulator</span> <span class="pre">setup</span> <span class="pre">is</span> <span class="pre">incorrect</span> <span class="pre">as</span> <span class="pre">it</span> <span class="pre">does</span> <span class="pre">not</span> <span class="pre">use</span> <span class="pre">ParallelEclipseState</span></code>.</p>
 </div>
 </section>
 </section>
