@@ -133,7 +133,6 @@ become required rather than optional. See the
     <span class="c1"># finalize=False: keep MPI alive until the script exits.</span>
     <span class="n">sim</span><span class="o">.</span><span class="n">setup_mpi</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">finalize</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
-    <span class="c1"># step_init() returns 0 on success and 1 on failure.</span>
     <span class="n">sim</span><span class="o">.</span><span class="n">step_init</span><span class="p">()</span>
 
     <span class="n">sim</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
@@ -155,6 +154,9 @@ become required rather than optional. See the
     <span class="n">main</span><span class="p">()</span>
 </pre></div>
 </div>
+<p><code class="docutils literal notranslate"><span class="pre">step_init()</span></code>, <code class="docutils literal notranslate"><span class="pre">step()</span></code> and <code class="docutils literal notranslate"><span class="pre">step_cleanup()</span></code> each return a status code:
+0 on success, 1 on failure. The example ignores them for brevity; check them
+in real scripts.</p>
 <p>Run it with:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mpirun<span class="w"> </span>-np<span class="w"> </span><span class="m">4</span><span class="w"> </span>python3<span class="w"> </span>my_script.py
 </pre></div>
@@ -181,9 +183,10 @@ initialize MPI a second time is an error.</p>
 <dt><code class="docutils literal notranslate"><span class="pre">finalize=False</span></code></dt><dd><p>Leaves MPI running after the simulator shuts down. With <code class="docutils literal notranslate"><span class="pre">finalize=True</span></code>
 OPM tears MPI down, and any collective call afterwards — including an
 <code class="docutils literal notranslate"><span class="pre">allgather</span></code> used for checking results — aborts. The teardown happens in
-the simulator’s destructor, not in <code class="docutils literal notranslate"><span class="pre">step_cleanup()</span></code>: in the example above
-it fires when <code class="docutils literal notranslate"><span class="pre">main()</span></code> returns and <code class="docutils literal notranslate"><span class="pre">sim</span></code> goes out of scope, so
-collectives still work immediately after <code class="docutils literal notranslate"><span class="pre">step_cleanup()</span></code>.</p>
+the simulator’s destructor, not in <code class="docutils literal notranslate"><span class="pre">step_cleanup()</span></code>: had the example above
+used <code class="docutils literal notranslate"><span class="pre">finalize=True</span></code>, it would fire when <code class="docutils literal notranslate"><span class="pre">main()</span></code> returns and <code class="docutils literal notranslate"><span class="pre">sim</span></code>
+goes out of scope, so collectives still work immediately after
+<code class="docutils literal notranslate"><span class="pre">step_cleanup()</span></code>.</p>
 </dd>
 </dl>
 </section>
@@ -197,7 +200,7 @@ collectives still work immediately after <code class="docutils literal notransla
 </div>
 <p>The four-argument form documented for serial runs —
 <code class="docutils literal notranslate"><span class="pre">BlackOilSimulator(deck,</span> <span class="pre">state,</span> <span class="pre">schedule,</span> <span class="pre">summary_config)</span></code> — cannot run on
-more than one rank.  It aborts with
+more than one rank. It aborts with
 <code class="docutils literal notranslate"><span class="pre">Parallel</span> <span class="pre">simulator</span> <span class="pre">setup</span> <span class="pre">is</span> <span class="pre">incorrect</span> <span class="pre">as</span> <span class="pre">it</span> <span class="pre">does</span> <span class="pre">not</span> <span class="pre">use</span> <span class="pre">ParallelEclipseState</span></code>.</p>
 </div>
 </section>
