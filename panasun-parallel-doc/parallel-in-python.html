@@ -154,9 +154,6 @@ become required rather than optional. See the
     <span class="n">main</span><span class="p">()</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">step_init()</span></code>, <code class="docutils literal notranslate"><span class="pre">step()</span></code> and <code class="docutils literal notranslate"><span class="pre">step_cleanup()</span></code> each return a status code:
-0 on success, 1 on failure. The example ignores them for brevity; check them
-in real scripts.</p>
 <p>Run it with:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>mpirun<span class="w"> </span>-np<span class="w"> </span><span class="m">4</span><span class="w"> </span>python3<span class="w"> </span>my_script.py
 </pre></div>
