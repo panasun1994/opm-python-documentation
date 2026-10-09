@@ -121,7 +121,9 @@ through the <code class="docutils literal notranslate"><span class="pre">Schedul
 simulator builds its own <code class="docutils literal notranslate"><span class="pre">Schedule</span></code>, which the script cannot reach. Passing
 <code class="docutils literal notranslate"><span class="pre">None</span></code> for the <code class="docutils literal notranslate"><span class="pre">EclipseState</span></code> is what makes this work in parallel (see
 “Constructing the simulator” below). This is a workaround until the simulator
-offers a supported way to reach its own <code class="docutils literal notranslate"><span class="pre">Schedule</span></code>.</p>
+offers a supported way to reach its own <code class="docutils literal notranslate"><span class="pre">Schedule</span></code>. In a parallel run, make
+every such change on every rank: each rank holds its own <code class="docutils literal notranslate"><span class="pre">Schedule</span></code>, and a
+change made only under <code class="docutils literal notranslate"><span class="pre">if</span> <span class="pre">RANK</span> <span class="pre">==</span> <span class="pre">0:</span></code> is silently ignored.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Importing mpi4py initializes MPI for the whole process,</span>
 <span class="c1"># including the simulator underneath.</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">mpi4py</span><span class="w"> </span><span class="kn">import</span> <span class="n">MPI</span>
