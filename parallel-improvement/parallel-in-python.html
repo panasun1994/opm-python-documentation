@@ -147,6 +147,8 @@ offers a supported way to reach its own <code class="docutils literal notranslat
     <span class="c1"># change is None in place of `state`: in parallel the simulator must build</span>
     <span class="c1"># the EclipseState itself (see &quot;Constructing the simulator&quot; below).</span>
     <span class="n">sim</span> <span class="o">=</span> <span class="n">BlackOilSimulator</span><span class="p">(</span><span class="n">deck</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">schedule</span><span class="p">,</span> <span class="n">summary_config</span><span class="p">)</span>
+    <span class="c1"># init=False: MPI is already initialized by mpi4py.</span>
+    <span class="c1"># finalize=False: keep MPI alive until the script exits.</span>
     <span class="n">sim</span><span class="o">.</span><span class="n">setup_mpi</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">finalize</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
     <span class="n">sim</span><span class="o">.</span><span class="n">step_init</span><span class="p">()</span>
