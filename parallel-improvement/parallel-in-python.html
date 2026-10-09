@@ -155,12 +155,18 @@ change made only under <code class="docutils literal notranslate"><span class="p
 
     <span class="n">sim</span><span class="o">.</span><span class="n">step_init</span><span class="p">()</span>
 
+    <span class="c1"># Change well controls through the Schedule passed to the constructor.</span>
+    <span class="c1"># Every rank must make the same call: a change made only under</span>
+    <span class="c1"># `if RANK == 0:` is silently ignored.</span>
+    <span class="n">schedule</span><span class="o">.</span><span class="n">shut_well</span><span class="p">(</span><span class="s2">&quot;PROD&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+
     <span class="c1"># The grid is distributed, so each rank sees only its own cells</span>
     <span class="c1"># (owned + overlap).</span>
     <span class="n">poro</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">get_porosity</span><span class="p">()</span>
     <span class="n">sim</span><span class="o">.</span><span class="n">set_porosity</span><span class="p">(</span><span class="n">poro</span> <span class="o">*</span> <span class="mf">0.95</span><span class="p">)</span>
 
-    <span class="n">sim</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
+    <span class="k">while</span> <span class="ow">not</span> <span class="n">sim</span><span class="o">.</span><span class="n">check_simulation_finished</span><span class="p">():</span>
+        <span class="n">sim</span><span class="o">.</span><span class="n">step</span><span class="p">()</span>
 
     <span class="n">sim</span><span class="o">.</span><span class="n">step_cleanup</span><span class="p">()</span>
 
@@ -178,6 +184,20 @@ change made only under <code class="docutils literal notranslate"><span class="p
 </div>
 <p>and confirm the rank count in the print file:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>grep<span class="w"> </span><span class="s2">&quot;Number of MPI processes&quot;</span><span class="w"> </span>SPE1CASE1.PRT
+</pre></div>
+</div>
+<p>To check that the well was shut, read the oil rate of <code class="docutils literal notranslate"><span class="pre">PROD</span></code> back from the
+summary file once the run has finished:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">opm.io.ecl</span><span class="w"> </span><span class="kn">import</span> <span class="n">ESmry</span>
+
+<span class="n">smry</span> <span class="o">=</span> <span class="n">ESmry</span><span class="p">(</span><span class="s2">&quot;SPE1CASE1.SMSPEC&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;TIME (days):&quot;</span><span class="p">,</span> <span class="p">[</span><span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">t</span><span class="p">),</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">smry</span><span class="p">[</span><span class="s2">&quot;TIME&quot;</span><span class="p">]])</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;WOPR:PROD:  &quot;</span><span class="p">,</span> <span class="p">[</span><span class="nb">round</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">smry</span><span class="p">[</span><span class="s2">&quot;WOPR:PROD&quot;</span><span class="p">]])</span>
+</pre></div>
+</div>
+<p>The rate is 20000 until day 3 and 0 from then on:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>TIME (days): [1.0, 1.6, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
+WOPR:PROD:   [20000, 20000, 20000, 20000, 0, 0, 0, 0, 0, 0, 0]
 </pre></div>
 </div>
 </section>
@@ -209,14 +229,18 @@ goes out of scope, so collectives still work immediately after
 <h3>Constructing the simulator<a class="headerlink" href="#constructing-the-simulator" title="Link to this heading"></a></h3>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
-<p>In parallel, only the <strong>filename constructor</strong> works:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sim</span> <span class="o">=</span> <span class="n">BlackOilSimulator</span><span class="p">(</span><span class="n">filename</span><span class="o">=</span><span class="s2">&quot;SPE1CASE1.DATA&quot;</span><span class="p">)</span>
+<p>In parallel, the <code class="docutils literal notranslate"><span class="pre">EclipseState</span></code> argument of the four-argument
+constructor must be <code class="docutils literal notranslate"><span class="pre">None</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">sim</span> <span class="o">=</span> <span class="n">BlackOilSimulator</span><span class="p">(</span><span class="n">deck</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">schedule</span><span class="p">,</span> <span class="n">summary_config</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The four-argument form documented for serial runs —
-<code class="docutils literal notranslate"><span class="pre">BlackOilSimulator(deck,</span> <span class="pre">state,</span> <span class="pre">schedule,</span> <span class="pre">summary_config)</span></code> — cannot run on
-more than one rank. It aborts with
-<code class="docutils literal notranslate"><span class="pre">Parallel</span> <span class="pre">simulator</span> <span class="pre">setup</span> <span class="pre">is</span> <span class="pre">incorrect</span> <span class="pre">as</span> <span class="pre">it</span> <span class="pre">does</span> <span class="pre">not</span> <span class="pre">use</span> <span class="pre">ParallelEclipseState</span></code>.</p>
+<p>Passing an <code class="docutils literal notranslate"><span class="pre">EclipseState</span></code> object fails on more than one rank with
+<code class="docutils literal notranslate"><span class="pre">Parallel</span> <span class="pre">simulator</span> <span class="pre">setup</span> <span class="pre">is</span> <span class="pre">incorrect</span> <span class="pre">as</span> <span class="pre">it</span> <span class="pre">does</span> <span class="pre">not</span> <span class="pre">use</span> <span class="pre">ParallelEclipseState</span></code>.
+With <code class="docutils literal notranslate"><span class="pre">None</span></code>, the simulator builds the parallel state itself from the
+DATA file. The filename constructor, <code class="docutils literal notranslate"><span class="pre">BlackOilSimulator(filename=...)</span></code>,
+also works in parallel, but then the script has no access to the
+<code class="docutils literal notranslate"><span class="pre">Schedule</span></code> the simulator uses, so well controls cannot be changed from
+Python.</p>
 </div>
 </section>
 </section>
