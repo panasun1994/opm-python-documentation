@@ -195,7 +195,11 @@ summary file once the run has finished:</p>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;WOPR:PROD:  &quot;</span><span class="p">,</span> <span class="p">[</span><span class="nb">round</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">smry</span><span class="p">[</span><span class="s2">&quot;WOPR:PROD&quot;</span><span class="p">]])</span>
 </pre></div>
 </div>
-<p>The rate is 20000 until day 3 and 0 from then on:</p>
+<p>The output depends on the deck. With the ten-year <code class="docutils literal notranslate"><span class="pre">SPE1CASE1.DATA</span></code> from
+opm-tests, the lists are long, and the rate is 20000 until day 90 and 0 from
+then on. With the ten-day version used by the opm-simulators Python tests
+(<a class="reference external" href="https://github.com/OPM/opm-simulators/tree/master/python/test_data/SPE1CASE1a">python/test_data/SPE1CASE1a</a>),
+the rate is 20000 until day 3 and 0 from then on:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>TIME (days): [1.0, 1.6, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
 WOPR:PROD:   [20000, 20000, 20000, 20000, 0, 0, 0, 0, 0, 0, 0]
 </pre></div>
