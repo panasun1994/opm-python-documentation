@@ -114,6 +114,14 @@ become required rather than optional. See the
 </section>
 <section id="an-example-script-for-a-parallel-run">
 <h2>An example script for a parallel run<a class="headerlink" href="#an-example-script-for-a-parallel-run" title="Link to this heading"></a></h2>
+<p>The example builds the simulator from objects parsed in Python, instead of from
+the file name, so that the script can change well controls during the run
+through the <code class="docutils literal notranslate"><span class="pre">Schedule</span></code> object it passes in, for example with
+<code class="docutils literal notranslate"><span class="pre">schedule.shut_well(&quot;PROD&quot;,</span> <span class="pre">step)</span></code>. With the filename constructor the
+simulator builds its own <code class="docutils literal notranslate"><span class="pre">Schedule</span></code>, which the script cannot reach. Passing
+<code class="docutils literal notranslate"><span class="pre">None</span></code> for the <code class="docutils literal notranslate"><span class="pre">EclipseState</span></code> is what makes this work in parallel (see
+“Constructing the simulator” below). This is a workaround until the simulator
+offers a supported way to reach its own <code class="docutils literal notranslate"><span class="pre">Schedule</span></code>.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Importing mpi4py initializes MPI for the whole process,</span>
 <span class="c1"># including the simulator underneath.</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">mpi4py</span><span class="w"> </span><span class="kn">import</span> <span class="n">MPI</span>
