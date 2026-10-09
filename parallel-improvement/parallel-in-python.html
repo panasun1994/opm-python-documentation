@@ -153,6 +153,8 @@ offers a supported way to reach its own <code class="docutils literal notranslat
 
     <span class="n">sim</span><span class="o">.</span><span class="n">step_init</span><span class="p">()</span>
 
+    <span class="c1"># The grid is distributed, so each rank sees only its own cells</span>
+    <span class="c1"># (owned + overlap).</span>
     <span class="n">poro</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">get_porosity</span><span class="p">()</span>
     <span class="n">sim</span><span class="o">.</span><span class="n">set_porosity</span><span class="p">(</span><span class="n">poro</span> <span class="o">*</span> <span class="mf">0.95</span><span class="p">)</span>
 
