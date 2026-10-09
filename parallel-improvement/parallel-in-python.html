@@ -135,7 +135,9 @@ become required rather than optional. See the
     <span class="n">schedule</span> <span class="o">=</span> <span class="n">Schedule</span><span class="p">(</span><span class="n">deck</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
     <span class="n">summary_config</span> <span class="o">=</span> <span class="n">SummaryConfig</span><span class="p">(</span><span class="n">deck</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">schedule</span><span class="p">)</span>
 
-    <span class="c1"># The one change from the documented example: None instead of `state`.</span>
+    <span class="c1"># Compared with the serial example in &quot;Run OPM Flow from Python&quot;, the only</span>
+    <span class="c1"># change is None in place of `state`: in parallel the simulator must build</span>
+    <span class="c1"># the EclipseState itself (see &quot;Constructing the simulator&quot; below).</span>
     <span class="n">sim</span> <span class="o">=</span> <span class="n">BlackOilSimulator</span><span class="p">(</span><span class="n">deck</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">schedule</span><span class="p">,</span> <span class="n">summary_config</span><span class="p">)</span>
     <span class="n">sim</span><span class="o">.</span><span class="n">setup_mpi</span><span class="p">(</span><span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">finalize</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
